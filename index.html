@@ -99,12 +99,10 @@
     <script type="module">
         // Importations Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variables globales Firebase fournies par l'environnement Canvas
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Remplacez cet objet par votre configuration Firebase
+        // Configuration Firebase (remplacez-la par la vôtre si vous l'exécutez en dehors de cet environnement)
         const firebaseConfig = {
             apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
             authDomain: "schematic-586fb.firebaseapp.com",
@@ -114,7 +112,9 @@
             appId: "1:128709664507:web:c87f8d66520b7ca0c8da5e",
             measurementId: "G-B0ZGQVD7PC"
         };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Utilisez directement l'ID de votre projet pour la collection
+        const appId = firebaseConfig.projectId;
 
         // Le fichier d'exemple pour l'initialisation de l'application
         const sampleMaterialList = `+-------------------------------+-------+---------+------------------------------------+
@@ -518,12 +518,8 @@
                     db = getFirestore(app);
                     auth = getAuth(app);
 
-                    // S'authentifier avec le token initial ou de manière anonyme
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    // S'authentifier de manière anonyme
+                    await signInAnonymously(auth);
 
                     // Écouter les changements d'état d'authentification
                     onAuthStateChanged(auth, (user) => {
