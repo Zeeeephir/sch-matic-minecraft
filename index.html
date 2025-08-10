@@ -10,17 +10,64 @@
         /* Définir la police pour un look cohérent */
         body {
             font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease;
+        }
+        
+        /* Styles personnalisés pour la barre de progression */
+        .progress-bar-container {
+            height: 12px;
+            background-color: #4a5568; /* gray-600 */
+            border-radius: 9999px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out, background-color 0.3s ease;
+        }
+
+        /* Styles pour les messages d'erreur */
+        .error-message-box {
+            animation: slideIn 0.5s ease-in-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Rendre la table plus lisible sur mobile */
+        @media (max-width: 768px) {
+            .table-container {
+                overflow-x: auto;
+            }
+            table {
+                width: 100%;
+                min-width: 700px;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 p-8">
-    <div class="container mx-auto">
-        <h1 class="text-4xl font-bold mb-6 text-center text-teal-400">Suivi de Matériaux Minecraft</h1>
+<body class="bg-gray-900 text-gray-100 p-4 sm:p-8">
+    <div class="container mx-auto max-w-7xl">
+        <h1 class="text-3xl sm:text-4xl font-bold mb-4 sm:mb-6 text-center text-teal-400 drop-shadow-md">
+            Suivi de Matériaux Minecraft
+        </h1>
         
         <!-- Section de téléversement de fichier -->
-        <div class="mb-8 p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700">
-            <h2 class="text-2xl font-semibold mb-4 text-teal-300">Importer votre liste</h2>
-            <label for="file-input" class="block mb-2 text-lg">Choisissez votre fichier .txt :</label>
+        <div class="mb-6 sm:mb-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+            <h2 class="text-xl sm:text-2xl font-semibold mb-3 text-teal-300">Importer votre liste</h2>
+            <label for="file-input" class="block mb-2 text-base">
+                Choisissez votre fichier .txt :
+            </label>
             <input 
                 type="file" 
                 id="file-input" 
@@ -30,21 +77,23 @@
                   file:rounded-full file:border-0
                   file:text-sm file:font-semibold
                   file:bg-teal-50 file:text-teal-700
-                  hover:file:bg-teal-100"
+                  hover:file:bg-teal-100 transition-colors duration-200"
             />
-            <p id="error-message" class="mt-4 text-red-400 hidden">
-              Le fichier n'a pas pu être traité. Assurez-vous qu'il a le bon format.
+            
+            <p id="error-message" class="mt-4 text-red-400 hidden error-message-box p-3 bg-red-900 bg-opacity-30 rounded-lg">
+                ❌ Le fichier n'a pas pu être traité. Assurez-vous qu'il a le bon format.
             </p>
+
             <button 
                 id="reset-button" 
-                class="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+                class="mt-4 px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors duration-200 shadow-md"
             >
                 Réinitialiser
             </button>
         </div>
 
         <!-- Conteneur pour le tableau des matériaux -->
-        <div id="materials-container"></div>
+        <div id="materials-container" class="table-container"></div>
     </div>
 
     <script>
@@ -276,25 +325,25 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Objet
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                                    Total nécessaire
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Total
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Possédé
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Avancement
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Stacks requis
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                                    Double coffres requis
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Double coffres
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Statut
                                 </th>
                             </tr>
@@ -311,7 +360,6 @@
                 const isCompleted = material.have >= material.total;
                 const progress = material.total > 0 ? Math.min(100, (material.have / material.total) * 100).toFixed(2) : 100.00;
                 
-                // Nouvelles logiques de calcul et d'affichage
                 const fullStacks = Math.floor(material.total / 64);
                 const remainingItems = material.total % 64;
                 const stacksNeeded = `${fullStacks} stacks + ${remainingItems}`;
@@ -321,13 +369,13 @@
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-700 transition duration-150 ease-in-out';
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">
+                    <td class="px-3 py-4 text-sm font-medium text-gray-200">
                         ${material.item}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td class="px-3 py-4 text-sm text-gray-400">
                         ${material.total}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <td class="px-3 py-4 text-sm">
                         <input
                             type="number"
                             value="${material.have}"
@@ -336,16 +384,19 @@
                             data-index="${index}"
                         />
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        ${progress}%
+                    <td class="px-3 py-4 text-sm">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar ${isCompleted ? 'bg-green-500' : 'bg-yellow-500'}" style="width: ${progress}%;"></div>
+                        </div>
+                        <span class="mt-1 text-xs text-gray-400">${progress}%</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td class="px-3 py-4 text-sm text-gray-400">
                         ${stacksNeeded}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td class="px-3 py-4 text-sm text-gray-400">
                         ${doubleChestsNeeded}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold">
+                    <td class="px-3 py-4 text-sm font-bold">
                         ${isCompleted ? '<span class="text-green-400">✅ Fini !</span>' : '<span class="text-yellow-400">En cours...</span>'}
                     </td>
                 `;
@@ -356,7 +407,7 @@
             tableBody.querySelectorAll('input').forEach(input => {
                 input.addEventListener('change', (e) => {
                     const index = e.target.dataset.index;
-                    materials[index].have = parseInt(e.target.value, 10);
+                    materials[index].have = parseInt(e.target.value, 10) || 0;
                     renderMaterials(materials); // Re-render le tableau pour mettre à jour les statuts
                 });
             });
