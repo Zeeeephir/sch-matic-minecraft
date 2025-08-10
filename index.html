@@ -107,9 +107,19 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
+        // Configuration Firebase (réinsérée pour que le code soit autonome)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
+            authDomain: "schematic-586fb.firebaseapp.com",
+            projectId: "schematic-586fb",
+            storageBucket: "schematic-586fb.firebasestorage.app",
+            messagingSenderId: "128709664507",
+            appId: "1:128709664507:web:c87f8d66520b7ca0c8da5e",
+            measurementId: "G-B0ZGQVD7PC"
+        };
+        
         // Global variables provided by the environment.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         let db;
@@ -258,9 +268,7 @@
                     if (db && userId) {
                         try {
                             const materialRef = doc(db, `artifacts/${appId}/users/${userId}/materials`, item);
-                            await updateDoc(materialRef, {
-                                have: newValue
-                            });
+                            await setDoc(materialRef, { item: item, total: materials.find(m => m.item === item).total, have: newValue });
                             console.log("Document mis à jour avec succès !");
                         } catch (error) {
                             console.error("Erreur lors de la mise à jour du document : ", error);
@@ -447,13 +455,6 @@
             const errorMessage = document.getElementById('error-message');
 
             try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    console.log("Firebase non configuré, affichage de la liste d'exemple.");
-                    renderMaterials(parseMaterialList(sampleMaterialList));
-                    userIdDisplay.innerText = 'Mode hors ligne';
-                    return;
-                }
-                
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -472,7 +473,6 @@
                     if (user) {
                         userId = user.uid;
                         userIdDisplay.innerText = userId;
-                        // On récupère les données existantes avant de lancer l'écoute en temps réel
                         const materialsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/materials`);
                         const querySnapshot = await getDocs(materialsCollectionRef);
                         const existingMaterials = [];
@@ -483,17 +483,14 @@
                         if (existingMaterials.length > 0) {
                             renderMaterials(existingMaterials);
                         } else {
-                             // S'il n'y a pas de données existantes, on charge l'exemple pour commencer
                             renderMaterials(parseMaterialList(sampleMaterialList));
                         }
                         
-                        // Puis on lance l'écoute en temps réel pour toutes les futures mises à jour
                         startListeningForChanges();
                     } else {
                         userId = null;
                         userIdDisplay.innerText = 'Non connecté';
                         console.log("Aucun utilisateur connecté.");
-                        // Affichage de l'exemple si l'utilisateur n'est pas connecté
                         renderMaterials(parseMaterialList(sampleMaterialList));
                     }
                 });
