@@ -96,7 +96,26 @@
         <div id="materials-container" class="table-container"></div>
     </div>
 
-    <script>
+    <script type="module">
+        // Importations Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales Firebase fournies par l'environnement Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Remplacez cet objet par votre configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
+            authDomain: "schematic-586fb.firebaseapp.com",
+            projectId: "schematic-586fb",
+            storageBucket: "schematic-586fb.firebasestorage.app",
+            messagingSenderId: "128709664507",
+            appId: "1:128709664507:web:c87f8d66520b7ca0c8da5e",
+            measurementId: "G-B0ZGQVD7PC"
+        };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
         // Le fichier d'exemple pour l'initialisation de l'application
         const sampleMaterialList = `+-------------------------------+-------+---------+------------------------------------+
 | Material List for placement 'giant_floating_tree_house9874050 (Converted Schematic)' |
@@ -205,7 +224,7 @@
 | Brown Wool                    |     8 |       8 |                                  0 |
 | Coarse Dirt                   |     8 |       8 |                                  0 |
 | Iron Door                     |     8 |       8 |                                  0 |
-| Pink Tulip                    |     8 |       8 |                                  0 |
+| Pink Tulip                   |     8 |       8 |                                  0 |
 | Brewing Stand                 |     7 |       7 |                                  0 |
 | Green Terracotta              |     7 |       7 |                                  0 |
 | Oxeye Daisy                   |     7 |       7 |                                  0 |
@@ -270,6 +289,9 @@
 +-------------------------------+-------+---------+------------------------------------+
 | Item                          | Total | Missing |                          Available |
 +-------------------------------+-------+---------+------------------------------------+`;
+
+        let db, auth, userId;
+        let unsubscribeFromFirestore;
 
         // Fonction pour parser le fichier .txt de manière plus robuste
         const parseMaterialList = (text) => {
@@ -381,6 +403,7 @@
                             value="${material.have}"
                             min="0"
                             class="w-24 p-2 rounded-md bg-gray-900 border text-white ${isCompleted ? 'border-green-500' : 'border-gray-600'} focus:outline-none focus:ring-2 focus:ring-teal-500 transition duration-150"
+                            data-item="${material.item}"
                             data-index="${index}"
                         />
                     </td>
@@ -405,25 +428,52 @@
 
             // Gérer les changements d'input
             tableBody.querySelectorAll('input').forEach(input => {
-                input.addEventListener('change', (e) => {
-                    const index = e.target.dataset.index;
-                    materials[index].have = parseInt(e.target.value, 10) || 0;
-                    renderMaterials(materials); // Re-render le tableau pour mettre à jour les statuts
+                input.addEventListener('change', async (e) => {
+                    const item = e.target.dataset.item;
+                    const newValue = parseInt(e.target.value, 10) || 0;
+                    
+                    // Mettre à jour la base de données Firestore
+                    if (db && userId) {
+                        try {
+                            const materialRef = doc(db, `artifacts/${appId}/users/${userId}/materials`, item);
+                            await updateDoc(materialRef, {
+                                have: newValue
+                            });
+                            console.log("Document mis à jour avec succès !");
+                        } catch (error) {
+                            console.error("Erreur lors de la mise à jour du document : ", error);
+                        }
+                    }
                 });
             });
         };
 
-        // Gérer le changement de fichier
-        document.getElementById('file-input').addEventListener('change', (event) => {
+        // Gérer le changement de fichier et sauvegarder dans Firestore
+        document.getElementById('file-input').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             const errorMessage = document.getElementById('error-message');
-            if (file) {
+
+            if (file && db && userId) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     const content = e.target.result;
                     const parsedMaterials = parseMaterialList(content);
+
                     if (parsedMaterials.length > 0) {
-                        renderMaterials(parsedMaterials);
+                        // Annuler l'ancien abonnement Firestore pour éviter les doublons
+                        if (unsubscribeFromFirestore) {
+                            unsubscribeFromFirestore();
+                        }
+                        
+                        // Sauvegarder les nouveaux matériaux dans Firestore
+                        const materialsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/materials`);
+                        for (const material of parsedMaterials) {
+                            const docRef = doc(materialsCollectionRef, material.item);
+                            await setDoc(docRef, material);
+                        }
+
+                        // Relancer l'abonnement après la sauvegarde
+                        startListeningForChanges();
                         errorMessage.classList.add('hidden');
                     } else {
                         renderMaterials([]);
@@ -437,16 +487,68 @@
         // Gérer le bouton de réinitialisation
         document.getElementById('reset-button').addEventListener('click', () => {
             const materials = parseMaterialList(sampleMaterialList);
+            // On ne sauvegarde pas dans la base de données, on affiche juste l'exemple
             renderMaterials(materials);
             document.getElementById('error-message').classList.add('hidden');
             document.getElementById('file-input').value = '';
         });
 
-        // Initialiser l'application avec la liste d'exemple
-        window.onload = () => {
-            const materials = parseMaterialList(sampleMaterialList);
-            renderMaterials(materials);
+        // Fonction pour écouter les changements dans Firestore en temps réel
+        const startListeningForChanges = () => {
+            if (db && userId) {
+                const materialsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/materials`);
+                // onSnapshot écoute les changements en temps réel
+                unsubscribeFromFirestore = onSnapshot(materialsCollectionRef, (snapshot) => {
+                    const materials = [];
+                    snapshot.forEach(doc => {
+                        materials.push(doc.data());
+                    });
+                    renderMaterials(materials); // Re-render avec les données les plus récentes
+                }, (error) => {
+                    console.error("Erreur lors de la récupération des données en temps réel : ", error);
+                });
+            }
         };
+
+        // Initialisation de Firebase et de l'authentification
+        const initFirebase = async () => {
+            if (Object.keys(firebaseConfig).length > 0) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // S'authentifier avec le token initial ou de manière anonyme
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    // Écouter les changements d'état d'authentification
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            startListeningForChanges(); // Commencer à écouter les données de l'utilisateur
+                        } else {
+                            userId = null;
+                            console.log("Aucun utilisateur connecté.");
+                        }
+                    });
+                } catch (error) {
+                    console.error("Erreur lors de l'initialisation de Firebase : ", error);
+                    document.getElementById('error-message').innerText = "❌ Erreur de connexion à la base de données. Vérifiez votre configuration.";
+                    document.getElementById('error-message').classList.remove('hidden');
+                }
+            } else {
+                console.log("Firebase non configuré, affichage de la liste d'exemple.");
+                const materials = parseMaterialList(sampleMaterialList);
+                renderMaterials(materials);
+            }
+        };
+
+        // Lancer l'initialisation au chargement de la page
+        window.onload = initFirebase;
     </script>
 </body>
 </html>
