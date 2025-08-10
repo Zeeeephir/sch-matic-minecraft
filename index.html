@@ -286,6 +286,15 @@
                                     Possédé
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Avancement
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Stacks requis
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Double coffres requis
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Statut
                                 </th>
                             </tr>
@@ -300,6 +309,10 @@
             
             materials.forEach((material, index) => {
                 const isCompleted = material.have >= material.total;
+                const progress = material.total > 0 ? Math.min(100, (material.have / material.total) * 100).toFixed(2) : 100.00;
+                const stacksNeeded = Math.ceil(material.total / 64);
+                const doubleChestsNeeded = Math.ceil(material.total / (64 * 54));
+
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-700 transition duration-150 ease-in-out';
                 row.innerHTML = `
@@ -317,6 +330,15 @@
                             class="w-24 p-2 rounded-md bg-gray-900 border text-white ${isCompleted ? 'border-green-500' : 'border-gray-600'} focus:outline-none focus:ring-2 focus:ring-teal-500 transition duration-150"
                             data-index="${index}"
                         />
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        ${progress}%
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        ${stacksNeeded}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        ${doubleChestsNeeded}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold">
                         ${isCompleted ? '<span class="text-green-400">✅ Fini !</span>' : '<span class="text-yellow-400">En cours...</span>'}
