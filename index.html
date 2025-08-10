@@ -189,7 +189,7 @@
 | Dark Oak Door                 |     3 |       3 |                                  0 |
 | Melon Seeds                   |     3 |       3 |                                  0 |
 | Pumpkin Seeds                 |     3 |       3 |                                  0 |
-| End Portal Frame              |     2 |       2 |                                  0 |
+| End Portal Frame                |     2 |       2 |                                  0 |
 | Glass Pane                    |     2 |       2 |                                  0 |
 | Light Blue Banner             |     2 |       2 |                                  0 |
 | Melon                         |     2 |       2 |                                  0 |
@@ -310,8 +310,13 @@
             materials.forEach((material, index) => {
                 const isCompleted = material.have >= material.total;
                 const progress = material.total > 0 ? Math.min(100, (material.have / material.total) * 100).toFixed(2) : 100.00;
-                const stacksNeeded = Math.ceil(material.total / 64);
-                const doubleChestsNeeded = Math.ceil(material.total / (64 * 54));
+                
+                // Nouvelles logiques de calcul et d'affichage
+                const fullStacks = Math.floor(material.total / 64);
+                const remainingItems = material.total % 64;
+                const stacksNeeded = `${fullStacks} stacks + ${remainingItems}`;
+
+                const doubleChestsNeeded = (material.total / (64 * 54)).toFixed(1);
 
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-700 transition duration-150 ease-in-out';
