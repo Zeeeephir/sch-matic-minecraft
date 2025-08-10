@@ -107,19 +107,9 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Configuration Firebase (réinsérée pour que le code soit autonome)
-        const firebaseConfig = {
-            apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
-            authDomain: "schematic-586fb.firebaseapp.com",
-            projectId: "schematic-586fb",
-            storageBucket: "schematic-586fb.firebasestorage.app",
-            messagingSenderId: "128709664507",
-            appId: "1:128709664507:web:c87f8d66520b7ca0c8da5e",
-            measurementId: "G-B0ZGQVD7PC"
-        };
-        
-        // Global variables provided by the environment.
+        // Configuration Firebase (utilisant les variables de l'environnement)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         let db;
@@ -453,8 +443,12 @@
         const initFirebase = async () => {
             const userIdDisplay = document.getElementById('user-id-display');
             const errorMessage = document.getElementById('error-message');
+            
+            // Masquer l'erreur au début de l'initialisation
+            errorMessage.classList.add('hidden');
 
             try {
+                // Utilisation des variables globales pour la configuration
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -496,7 +490,7 @@
                 });
             } catch (error) {
                 console.error("Erreur fatale lors de l'initialisation de Firebase : ", error);
-                errorMessage.innerText = "❌ Erreur de connexion à la base de données. Vérifiez votre configuration.";
+                errorMessage.innerText = "❌ Erreur de connexion à la base de données. Veuillez actualiser la page.";
                 errorMessage.classList.remove('hidden');
             }
         };
