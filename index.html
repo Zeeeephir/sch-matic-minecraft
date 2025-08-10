@@ -163,12 +163,8 @@
             }
 
             const sortedMaterials = materials.sort((a, b) => {
-                const progressA = a.total > 0 ? (a.have / a.total) : 1;
-                const progressB = b.total > 0 ? (b.have / b.total) : 1;
-                if (progressA === progressB) {
-                    return a.item.localeCompare(b.item);
-                }
-                return progressA - progressB;
+                // Triez par nombre total de matériaux, du plus grand au plus petit
+                return b.total - a.total;
             });
 
             const tableHtml = `
