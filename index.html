@@ -222,7 +222,7 @@
 | Item                          | Total | Missing |                          Available |
 +-------------------------------+-------+---------+------------------------------------+`;
 
-        // Fonction pour parser le fichier .txt
+        // Fonction pour parser le fichier .txt de manière plus robuste
         const parseMaterialList = (text) => {
             const lines = text.split(/\r?\n/);
             const materials = [];
@@ -230,23 +230,32 @@
 
             for (const line of lines) {
                 const trimmedLine = line.trim();
+                
+                // On détecte les lignes de début et de fin de tableau
                 if (trimmedLine.includes('+-------------------------------+-------+---------+------------------------------------+')) {
-                    if (startParsing) {
-                        break;
+                    startParsing = !startParsing;
+                    // On s'arrête si on a fini de parser un tableau non-vide
+                    if (!startParsing && materials.length > 0) { 
+                        break; 
                     }
-                    startParsing = true;
                     continue;
                 }
-                if (startParsing && trimmedLine.startsWith('| ') && !trimmedLine.includes('Item')) {
-                    const parts = trimmedLine.split('|').map(p => p.trim()).filter(p => p !== '');
-                    if (parts.length >= 2) {
-                        const item = parts[0];
-                        const total = parseInt(parts[1], 10);
-                        materials.push({
-                            item,
-                            total,
-                            have: 0
-                        });
+                
+                // On parse les lignes de données uniquement à l'intérieur du tableau
+                if (startParsing) {
+                    const parts = trimmedLine.split('|').map(p => p.trim());
+                    // Une ligne de données valide doit avoir au moins 5 parties et ne pas être une ligne d'en-tête
+                    if (parts.length >= 5 && parts[0] === '' && !parts[1].includes('Item')) {
+                        const item = parts[1];
+                        const total = parseInt(parts[2], 10);
+                        // On s'assure que la valeur est un nombre valide
+                        if (!isNaN(total)) {
+                            materials.push({
+                                item: item,
+                                total: total,
+                                have: 0
+                            });
+                        }
                     }
                 }
             }
