@@ -65,8 +65,8 @@
         <!-- Section d'information de l'utilisateur et de collaboration -->
         <div class="mb-6 sm:mb-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 flex flex-col sm:flex-row justify-between items-center">
             <div id="user-info" class="flex items-center mb-4 sm:mb-0">
-                <span class="mr-2 text-sm text-gray-400">Votre ID utilisateur :</span>
-                <span id="user-id" class="text-white font-mono bg-gray-700 rounded-md px-3 py-1 cursor-pointer" title="Cliquez pour copier">
+                <span class="mr-2 text-sm text-gray-400">ID de session :</span>
+                <span id="project-id-display" class="text-white font-mono bg-gray-700 rounded-md px-3 py-1 cursor-pointer" title="Cliquez pour copier">
                     Chargement...
                 </span>
             </div>
@@ -120,7 +120,7 @@
     <div id="connect-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full">
             <h3 class="text-xl font-bold mb-4 text-teal-300">Connecter à un projet existant</h3>
-            <p class="text-sm text-gray-400 mb-4">Entrez l'ID utilisateur de votre ami pour vous connecter à son projet.</p>
+            <p class="text-sm text-gray-400 mb-4">Entrez l'ID de session de votre ami pour vous connecter à son projet.</p>
             <input
                 id="project-id-input"
                 type="text"
@@ -155,7 +155,7 @@
         // Importation des modules Firebase nécessaires
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Définition de l'exemple de liste de matériaux
         const sampleMaterialList = `+-------------------------------+-------+---------+------------------------------------+
@@ -333,8 +333,6 @@
         let userProjectId;
         let unsubscribeFromFirestore = null;
         
-        // REMPLACER cette ligne par votre configuration Firebase
-        // Vous pouvez trouver cet objet dans les paramètres de votre projet Firebase
         const FIREBASE_CONFIG = {
              apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
              authDomain: "schematic-586fb.firebaseapp.com",
@@ -345,35 +343,28 @@
              measurementId: "G-B0ZGQVD7PC"
         };
         
-        // Ces variables sont fournies par l'environnement Canvas.
-        // Ne modifiez pas ces lignes si vous utilisez l'application dans l'environnement Canvas.
-        // Si vous exécutez le code sur GitHub, assurez-vous que FIREBASE_CONFIG est rempli.
         const appId = typeof __app_id !== 'undefined' ? __app_id : FIREBASE_CONFIG.appId;
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : FIREBASE_CONFIG;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // Fonction pour afficher une modale de message
         const showMessage = (title, message) => {
             document.getElementById('message-title').innerText = title;
             document.getElementById('message-text').innerText = message;
             document.getElementById('message-modal').classList.remove('hidden');
         };
 
-        // Fermer la modale de message
         document.getElementById('close-message').addEventListener('click', () => {
             document.getElementById('message-modal').classList.add('hidden');
         });
 
-        // Fonction pour gérer la connexion à un projet
         const connectToProject = async (projectId) => {
             if (unsubscribeFromFirestore) {
                 unsubscribeFromFirestore();
             }
             userProjectId = projectId;
-            localStorage.setItem('minecraftProjectId', projectId); // Sauvegarder l'ID du projet
-            document.getElementById('user-id').innerText = projectId;
+            localStorage.setItem('minecraftProjectId', projectId);
+            document.getElementById('project-id-display').innerText = projectId;
             
-            // Écouter le document Firestore pour le nouvel ID de projet
             const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
             console.log(`Tentative de connexion à Firestore: ${materialDocRef.path}`);
             unsubscribeFromFirestore = onSnapshot(materialDocRef, (docSnap) => {
@@ -381,7 +372,7 @@
                     const data = docSnap.data();
                     renderMaterials(data.materials);
                 } else {
-                    // Si le document n'existe pas, initialiser avec la liste par défaut
+                    // Le document n'existe pas, on l'initialise avec la liste par défaut
                     initProject(userProjectId);
                 }
             }, (error) => {
@@ -404,40 +395,59 @@
         document.getElementById('confirm-connect').addEventListener('click', async () => {
             const projectIdInput = document.getElementById('project-id-input');
             const newProjectId = projectIdInput.value.trim();
-            if (newProjectId) {
+            if (newProjectId && newProjectId.length === 4 && !isNaN(newProjectId)) {
                 await connectToProject(newProjectId);
                 document.getElementById('connect-modal').classList.add('hidden');
                 showMessage('Connecté !', `Vous êtes maintenant connecté au projet : ${newProjectId}`);
             } else {
-                showMessage('Erreur', 'Veuillez entrer un ID de projet valide.');
+                showMessage('Erreur', 'Veuillez entrer un ID de projet valide à 4 chiffres.');
             }
         });
 
-        // Fonction pour parser le fichier .txt
+        // Fonction pour générer un ID de projet unique à 4 chiffres
+        const generateUniqueProjectId = async () => {
+            let newProjectId;
+            let docExists = true;
+            while (docExists) {
+                newProjectId = Math.floor(1000 + Math.random() * 9000).toString();
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', newProjectId);
+                const docSnap = await getDoc(docRef);
+                docExists = docSnap.exists();
+            }
+            return newProjectId;
+        };
+
         const parseMaterialList = (text) => {
             const lines = text.split(/\r?\n/);
             const materials = [];
-            let startParsing = false;
+            const isHeaderLine = (line) => line.includes('Item') && line.includes('Total') && line.includes('Missing');
+
+            let headerFound = false;
 
             for (const line of lines) {
-                // Utiliser une expression régulière pour diviser la ligne en colonnes tout en gérant les espaces
-                const parts = line.split(/\|/g).map(p => p.trim());
-                if (parts.length >= 5 && parts[1] && !parts[1].includes('Item') && parts[2]) {
-                    const item = parts[1];
-                    const total = parseInt(parts[2], 10);
-                    if (!isNaN(total) && item) {
-                        materials.push({
-                            item: item.trim(),
-                            total: total,
-                            have: 0
-                        });
+                if (!headerFound && isHeaderLine(line)) {
+                    headerFound = true;
+                    continue;
+                }
+                
+                if (headerFound) {
+                    const parts = line.split(/\|/g).map(p => p.trim());
+                    if (parts.length >= 5 && parts[1] && parts[2]) {
+                        const item = parts[1];
+                        const total = parseInt(parts[2], 10);
+                        if (!isNaN(total) && item) {
+                            materials.push({
+                                item: item.trim(),
+                                total: total,
+                                have: 0
+                            });
+                        }
                     }
                 }
             }
             return materials;
         };
-
-        // Fonction pour mettre à jour les données dans Firestore
+        
         const updateFirestore = async (materials) => {
             if (!userProjectId) {
                 console.error("User not authenticated or project ID not set.");
@@ -446,14 +456,12 @@
             const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
             console.log(`Mise à jour de Firestore: ${materialDocRef.path}`);
             try {
-                // Utilisation de la mise à jour pour ne pas écraser d'autres champs
                 await setDoc(materialDocRef, { materials: materials }, { merge: true });
             } catch (e) {
                 console.error("Error updating document: ", e);
             }
         };
 
-        // Fonction pour générer le tableau et gérer les événements
         const renderMaterials = (materials) => {
             const container = document.getElementById('materials-container');
             container.innerHTML = '';
@@ -464,7 +472,6 @@
             }
 
             const sortedMaterials = materials.sort((a, b) => {
-                // Triez par nombre total de matériaux, du plus grand au plus petit
                 return b.total - a.total;
             });
 
@@ -562,7 +569,6 @@
                 tableBody.appendChild(row);
             });
 
-            // Ajoute des écouteurs d'événements pour les changements sur les inputs
             tableBody.querySelectorAll('input').forEach(input => {
                 input.addEventListener('change', async (e) => {
                     const itemName = e.target.dataset.itemName;
@@ -577,7 +583,6 @@
             });
         };
 
-        // Fonction pour initialiser le projet dans Firestore si le document n'existe pas
         const initProject = async (projectId) => {
             const initialMaterials = parseMaterialList(sampleMaterialList);
             const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
@@ -585,10 +590,8 @@
             await setDoc(materialDocRef, { materials: initialMaterials });
         };
         
-        // Initialisation de l'application
         const initApp = async () => {
             try {
-                // Vérifier si la configuration Firebase a été fournie
                 if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
                     throw new Error("Firebase configuration is missing. Please provide your own FIREBASE_CONFIG.");
                 }
@@ -597,28 +600,22 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Authentification de l'utilisateur anonymement ou avec un jeton
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
                 
-                // Mettre à jour l'interface utilisateur avec l'ID de l'utilisateur
-                const userId = auth.currentUser?.uid || crypto.randomUUID();
-                document.getElementById('user-id').innerText = userId;
-                
-                // Définir l'ID du projet sur l'ID de l'utilisateur par défaut
-                userProjectId = userId;
-                
-                // Vérifier si un ID de projet est sauvegardé localement (pour les retours)
-                const savedProjectId = localStorage.getItem('minecraftProjectId');
+                let savedProjectId = localStorage.getItem('minecraftProjectId');
                 if (savedProjectId) {
                     userProjectId = savedProjectId;
-                    document.getElementById('user-id').innerText = savedProjectId;
+                } else {
+                    userProjectId = await generateUniqueProjectId();
+                    localStorage.setItem('minecraftProjectId', userProjectId);
                 }
+                
+                document.getElementById('project-id-display').innerText = userProjectId;
 
-                // Écouter les mises à jour en temps réel de Firestore
                 const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
                 console.log(`Écoute de Firestore: ${materialDocRef.path}`);
                 unsubscribeFromFirestore = onSnapshot(materialDocRef, (docSnap) => {
@@ -626,7 +623,6 @@
                         const data = docSnap.data();
                         renderMaterials(data.materials);
                     } else {
-                        // Si le document n'existe pas, le créer avec les données initiales
                         initProject(userProjectId);
                     }
                 }, (error) => {
@@ -636,7 +632,6 @@
                 
             } catch (e) {
                 console.error("Erreur d'initialisation de l'application: ", e);
-                // Si l'erreur est due à une configuration manquante, afficher un message plus précis
                 if (e.message.includes("Firebase configuration is missing")) {
                      showMessage('Erreur Critique', "Configuration Firebase manquante. Veuillez insérer votre configuration personnelle dans le code.");
                 } else {
@@ -657,7 +652,6 @@
 
                     if (parsedMaterials.length > 0) {
                         errorMessage.classList.add('hidden');
-                        // Mettre à jour la base de données au lieu du localStorage
                         await updateFirestore(parsedMaterials);
                         showMessage('Succès', 'La liste de matériaux a été importée et mise à jour avec succès !');
                     } else {
@@ -672,25 +666,22 @@
         
         document.getElementById('reset-button').addEventListener('click', async () => {
             const initialMaterials = parseMaterialList(sampleMaterialList);
-            // Mettre à jour Firestore avec les données par défaut
             await updateFirestore(initialMaterials);
             document.getElementById('error-message').classList.add('hidden');
             document.getElementById('file-input').value = '';
             showMessage('Réinitialisé !', 'Le projet a été réinitialisé à la liste par défaut.');
         });
 
-        // Gérer le clic pour copier l'ID utilisateur
-        document.getElementById('user-id').addEventListener('click', () => {
-            const userId = document.getElementById('user-id').innerText;
-            if (userId && userId !== 'Chargement...') {
-                // Utiliser la méthode obsolète pour la compatibilité avec l'iframe
+        document.getElementById('project-id-display').addEventListener('click', () => {
+            const projectId = document.getElementById('project-id-display').innerText;
+            if (projectId && projectId !== 'Chargement...') {
                 const el = document.createElement('textarea');
-                el.value = userId;
+                el.value = projectId;
                 document.body.appendChild(el);
                 el.select();
                 document.execCommand('copy');
                 document.body.removeChild(el);
-                showMessage('Copié !', 'L\'ID utilisateur a été copié dans le presse-papiers.');
+                showMessage('Copié !', 'L\'ID de session a été copié dans le presse-papiers.');
             }
         });
 
