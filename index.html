@@ -62,6 +62,19 @@
             Suivi de Matériaux Minecraft
         </h1>
         
+        <!-- Section d'information de l'utilisateur et de collaboration -->
+        <div class="mb-6 sm:mb-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 flex flex-col sm:flex-row justify-between items-center">
+            <div id="user-info" class="flex items-center mb-4 sm:mb-0">
+                <span class="mr-2 text-sm text-gray-400">Votre ID utilisateur :</span>
+                <span id="user-id" class="text-white font-mono bg-gray-700 rounded-md px-3 py-1 cursor-pointer" title="Cliquez pour copier">
+                    Chargement...
+                </span>
+            </div>
+            <div class="flex-grow sm:flex-grow-0 w-full sm:w-auto text-center">
+                <p class="text-xs text-gray-500 italic">Partagez cet ID avec vos amis pour collaborer sur le même projet.</p>
+            </div>
+        </div>
+
         <!-- Section de téléversement de fichier -->
         <div class="mb-6 sm:mb-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
             <h2 class="text-xl sm:text-2xl font-semibold mb-3 text-teal-300">Importer votre liste</h2>
@@ -90,195 +103,300 @@
             >
                 Réinitialiser
             </button>
+
+            <button 
+                id="connect-button" 
+                class="mt-4 ml-2 px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors duration-200 shadow-md"
+            >
+                Connexion à un projet
+            </button>
         </div>
 
         <!-- Conteneur pour le tableau des matériaux -->
         <div id="materials-container" class="table-container"></div>
     </div>
 
-    <script>
+    <!-- Modale personnalisée pour la saisie de l'ID de projet -->
+    <div id="connect-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full">
+            <h3 class="text-xl font-bold mb-4 text-teal-300">Connecter à un projet existant</h3>
+            <p class="text-sm text-gray-400 mb-4">Entrez l'ID utilisateur de votre ami pour vous connecter à son projet.</p>
+            <input
+                id="project-id-input"
+                type="text"
+                placeholder="Entrez l'ID du projet..."
+                class="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 mb-4"
+            />
+            <div class="flex justify-end space-x-2">
+                <button id="cancel-connect" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors duration-200">
+                    Annuler
+                </button>
+                <button id="confirm-connect" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors duration-200">
+                    Connecter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale de message personnalisée -->
+    <div id="message-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full">
+            <h3 id="message-title" class="text-xl font-bold mb-4 text-teal-300"></h3>
+            <p id="message-text" class="text-sm text-gray-400 mb-4"></p>
+            <div class="flex justify-end">
+                <button id="close-message" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors duration-200">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Importation des modules Firebase nécessaires
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // Définition de l'exemple de liste de matériaux
         const sampleMaterialList = `+-------------------------------+-------+---------+------------------------------------+
 | Material List for placement 'giant_floating_tree_house9874050 (Converted Schematic)' |
 +-------------------------------+-------+---------+------------------------------------+
-| Item                          | Total | Missing |                          Available |
+| Item                          | Total | Missing |                         Available |
 +-------------------------------+-------+---------+------------------------------------+
-| Oak Leaves                    | 21329 |   21329 |                                  0 |
-| Stone                         | 14748 |   14748 |                                  0 |
-| Dark Oak Planks               |  6212 |    6212 |                                  0 |
-| Birch Planks                  |  5873 |    5873 |                                  0 |
-| Dirt                          |  4053 |    4053 |                                  0 |
-| Oak Log                       |  3682 |    3682 |                                  0 |
-| Oak Fence                     |  2516 |    2516 |                                  0 |
-| Grass Block                   |  2011 |    2009 |                                  0 |
-| White Stained Glass Pane      |  1954 |    1954 |                                  0 |
-| Glowstone                     |  1890 |    1890 |                                  0 |
-| Oak Planks                    |  1888 |    1886 |                                  0 |
-| Dark Oak Slab                 |  1736 |    1736 |                                  0 |
-| Torch                         |  1516 |    1516 |                                  0 |
-| Birch Stairs                  |  1348 |    1348 |                                  0 |
-| White Stained Glass           |  1302 |    1302 |                                  0 |
-| White Carpet                  |  1203 |    1203 |                                  0 |
-| Bookshelf                     |  1161 |    1161 |                                  0 |
-| Redstone Dust                 |   921 |     921 |                                  0 |
-| Red Carpet                    |   867 |     867 |                                  0 |
-| White Wool                    |   727 |     727 |                                  0 |
-| Red Wool                      |   675 |     675 |                                  0 |
-| Chiseled Quartz Block         |   655 |     655 |                                  0 |
-| Glass                         |   632 |     632 |                                  0 |
-| Jungle Leaves                 |   619 |     619 |                                  0 |
-| Birch Slab                    |   602 |     602 |                                  0 |
-| Black Wool                    |   595 |     595 |                                  0 |
-| Lime Stained Glass            |   489 |     489 |                                  0 |
-| Yellow Terracotta             |   474 |     474 |                                  0 |
-| Block of Quartz               |   444 |     444 |                                  0 |
-| Redstone Repeater             |   347 |     347 |                                  0 |
-| Black Terracotta              |   298 |     298 |                                  0 |
-| Quartz Slab                   |   286 |     286 |                                  0 |
-| Water Bucket                  |   268 |     268 |                                  0 |
-| Birch Leaves                  |   214 |     214 |                                  0 |
-| Ladder                        |   209 |     209 |                                  0 |
-| Acacia Planks                 |   206 |     206 |                                  0 |
-| Sticky Piston                 |   205 |     205 |                                  0 |
-| Block of Gold                 |   192 |     192 |                                  0 |
-| Redstone Torch                |   180 |     180 |                                  0 |
-| Blue Stained Glass            |   166 |     166 |                                  0 |
-| Chest                         |   155 |     155 |                                  0 |
-| Gravel                        |   106 |     106 |                                  0 |
-| Flower Pot                    |    99 |      99 |                                  0 |
-| Black Stained Glass           |    88 |      88 |                                  0 |
-| Oak Stairs                    |    78 |      78 |                                  0 |
-| Sea Lantern                   |    77 |      77 |                                  0 |
-| Hopper                        |    68 |      68 |                                  0 |
-| Brown Carpet                  |    64 |      64 |                                  0 |
-| Oak Slab                      |    63 |      63 |                                  0 |
-| Block of Emerald              |    62 |      62 |                                  0 |
-| Cyan Carpet                   |    56 |      56 |                                  0 |
-| Green Carpet                  |    56 |      56 |                                  0 |
-| Block of Lapis Lazuli         |    54 |      54 |                                  0 |
-| Note Block                    |    54 |      54 |                                  0 |
-| Quartz Stairs                 |    47 |      47 |                                  0 |
-| Block of Diamond              |    46 |      46 |                                  0 |
-| Diamond Ore                   |    46 |      46 |                                  0 |
-| Wheat Seeds                   |    45 |      45 |                                  0 |
-| Obsidian                      |    43 |      43 |                                  0 |
-| Red Terracotta                |    39 |      39 |                                  0 |
-| Cyan Stained Glass            |    37 |      37 |                                  0 |
-| Blue Orchid                   |    36 |      36 |                                  0 |
-| Furnace                       |    35 |      35 |                                  0 |
-| Redstone Lamp                 |    34 |      34 |                                  0 |
-| Birch Log                     |    33 |      33 |                                  0 |
-| White Banner                  |    32 |      32 |                                  0 |
-| Dispenser                     |    31 |      31 |                                  0 |
-| Red Stained Glass             |    31 |      31 |                                  0 |
-| Potato                        |    30 |      30 |                                  0 |
-| Quartz Pillar                 |    30 |      30 |                                  0 |
-| Dandelion                     |    28 |      28 |                                  0 |
-| Packed Ice                    |    28 |      28 |                                  0 |
-| Slime Block                   |    25 |      25 |                                  0 |
-| Stone Slab                    |    25 |      25 |                                  0 |
-| Red Banner                    |    24 |      24 |                                  0 |
-| Redstone Comparator           |    24 |      24 |                                  0 |
-| Acacia Stairs                 |    22 |      22 |                                  0 |
-| Dark Oak Stairs               |    20 |      20 |                                  0 |
-| Red Bed                       |    20 |      20 |                                  0 |
-| Lever                         |    17 |      17 |                                  0 |
-| Stone Button                  |    17 |      17 |                                  0 |
-| Dropper                       |    16 |      16 |                                  0 |
-| Trapped Chest                 |    16 |      16 |                                  0 |
-| Oak Button                    |    15 |      15 |                                  0 |
-| Oak Trapdoor                  |    15 |      15 |                                  0 |
-| Allium                        |    14 |      14 |                                  0 |
-| Crafting Table                |    14 |      14 |                                  0 |
-| Heavy Weighted Pressure Plate |    14 |      14 |                                  0 |
-| Azure Bluet                   |    13 |      13 |                                  0 |
-| Block of Redstone             |    13 |      13 |                                  0 |
-| Lime Carpet                   |    13 |      13 |                                  0 |
-| Oak Pressure Plate            |    13 |      13 |                                  0 |
-| Piston                        |    13 |      13 |                                  0 |
-| Tall Grass                    |    13 |      13 |                                  0 |
-| Jukebox                       |    12 |      12 |                                  0 |
-| Jungle Log                    |    11 |      11 |                                  0 |
-| Poppy                         |    11 |      11 |                                  0 |
-| Birch Door                    |     9 |       9 |                                  0 |
-| Brown Stained Glass           |     9 |       9 |                                  0 |
-| Brown Wool                    |     8 |       8 |                                  0 |
-| Coarse Dirt                   |     8 |       8 |                                  0 |
-| Iron Door                     |     8 |       8 |                                  0 |
-| Pink Tulip                    |     8 |       8 |                                  0 |
-| Brewing Stand                 |     7 |       7 |                                  0 |
-| Green Terracotta              |     7 |       7 |                                  0 |
-| Oxeye Daisy                   |     7 |       7 |                                  0 |
-| Blue Carpet                   |     6 |       6 |                                  0 |
-| Cobweb                        |     6 |       6 |                                  0 |
-| Cyan Terracotta               |     6 |       6 |                                  0 |
-| Enchanting Table              |     6 |       6 |                                  0 |
-| Ender Chest                   |     6 |       6 |                                  0 |
-| Snow                          |     6 |       6 |                                  0 |
-| Sugar Cane                    |     6 |       6 |                                  0 |
-| Cauldron                      |     5 |       5 |                                  0 |
-| Sand                          |     5 |       5 |                                  0 |
-| Acacia Log                    |     4 |       4 |                                  0 |
-| Birch Fence                   |     4 |       4 |                                  0 |
-| Carved Pumpkin                |     4 |       4 |                                  0 |
-| Cyan Banner                   |     4 |       4 |                                  0 |
-| Dark Oak Fence                |     4 |       4 |                                  0 |
-| Dark Oak Fence Gate           |     4 |       4 |                                  0 |
-| Dark Oak Log                  |     4 |       4 |                                  0 |
-| Light Blue Stained Glass      |     4 |       4 |                                  0 |
-| Light Weighted Pressure Plate |     4 |       4 |                                  0 |
-| Oak Fence Gate                |     4 |       4 |                                  0 |
-| Orange Tulip                  |     4 |       4 |                                  0 |
-| Red Tulip                     |     4 |       4 |                                  0 |
-| Stone Pressure Plate          |     4 |       4 |                                  0 |
-| White Tulip                   |     4 |       4 |                                  0 |
-| Beacon                        |     3 |       3 |                                  0 |
-| Blue Banner                   |     3 |       3 |                                  0 |
-| Brown Terracotta              |     3 |       3 |                                  0 |
-| Dark Oak Door                 |     3 |       3 |                                  0 |
-| Melon Seeds                   |     3 |       3 |                                  0 |
-| Pumpkin Seeds                 |     3 |       3 |                                  0 |
-| End Portal Frame              |     2 |       2 |                                  0 |
-| Glass Pane                    |     2 |       2 |                                  0 |
-| Light Blue Banner             |     2 |       2 |                                  0 |
-| Melon                         |     2 |       2 |                                  0 |
-| Rose Bush                     |     2 |       2 |                                  0 |
-| Acacia Sapling                |     1 |       1 |                                  0 |
-| Anvil                         |     1 |       1 |                                  0 |
-| Birch Sapling                 |     1 |       1 |                                  0 |
-| Black Carpet                  |     1 |       1 |                                  0 |
-| Block of Iron                 |     1 |       1 |                                  0 |
-| Blue Terracotta               |     1 |       1 |                                  0 |
-| Cactus                        |     1 |       1 |                                  0 |
-| Cake                          |     1 |       1 |                                  0 |
-| Dark Oak Sapling              |     1 |       1 |                                  0 |
-| Daylight Detector             |     1 |       1 |                                  0 |
-| Gray Carpet                   |     1 |       1 |                                  0 |
-| Jungle Sapling                |     1 |       1 |                                  0 |
-| Light Blue Terracotta         |     1 |       1 |                                  0 |
-| Light Gray Terracotta         |     1 |       1 |                                  0 |
-| Lilac                         |     1 |       1 |                                  0 |
-| Lime Terracotta               |     1 |       1 |                                  0 |
-| Lime Wool                     |     1 |       1 |                                  0 |
-| Magenta Terracotta            |     1 |       1 |                                  0 |
-| Orange Terracotta             |     1 |       1 |                                  0 |
-| Pink Terracotta               |     1 |       1 |                                  0 |
-| Powered Rail                  |     1 |       1 |                                  0 |
-| Purple Terracotta             |     1 |       1 |                                  0 |
-| Spruce Sapling                |     1 |       1 |                                  0 |
-| Sunflower                     |     1 |       1 |                                  0 |
+| Oak Leaves                    | 21329 |   21329 |                                 0 |
+| Stone                         | 14748 |   14748 |                                 0 |
+| Dark Oak Planks               |  6212 |    6212 |                                 0 |
+| Birch Planks                  |  5873 |    5873 |                                 0 |
+| Dirt                          |  4053 |    4053 |                                 0 |
+| Oak Log                       |  3682 |    3682 |                                 0 |
+| Oak Fence                     |  2516 |    2516 |                                 0 |
+| Grass Block                   |  2011 |    2009 |                                 0 |
+| White Stained Glass Pane      |  1954 |    1954 |                                 0 |
+| Glowstone                     |  1890 |    1890 |                                 0 |
+| Oak Planks                    |  1888 |    1886 |                                 0 |
+| Dark Oak Slab                 |  1736 |    1736 |                                 0 |
+| Torch                         |  1516 |    1516 |                                 0 |
+| Birch Stairs                  |  1348 |    1348 |                                 0 |
+| White Stained Glass           |  1302 |    1302 |                                 0 |
+| White Carpet                  |  1203 |    1203 |                                 0 |
+| Bookshelf                     |  1161 |    1161 |                                 0 |
+| Redstone Dust                 |   921 |     921 |                                 0 |
+| Red Carpet                    |   867 |     867 |                                 0 |
+| White Wool                    |   727 |     727 |                                 0 |
+| Red Wool                      |   675 |     675 |                                 0 |
+| Chiseled Quartz Block         |   655 |     655 |                                 0 |
+| Glass                         |   632 |     632 |                                 0 |
+| Jungle Leaves                 |   619 |     619 |                                 0 |
+| Birch Slab                    |   602 |     602 |                                 0 |
+| Black Wool                    |   595 |     595 |                                 0 |
+| Lime Stained Glass            |   489 |     489 |                                 0 |
+| Yellow Terracotta             |   474 |     474 |                                 0 |
+| Block of Quartz               |   444 |     444 |                                 0 |
+| Redstone Repeater             |   347 |     347 |                                 0 |
+| Black Terracotta              |   298 |     298 |                                 0 |
+| Quartz Slab                   |   286 |     286 |                                 0 |
+| Water Bucket                  |   268 |     268 |                                 0 |
+| Birch Leaves                  |   214 |     214 |                                 0 |
+| Ladder                        |   209 |     209 |                                 0 |
+| Acacia Planks                 |   206 |     206 |                                 0 |
+| Sticky Piston                 |   205 |     205 |                                 0 |
+| Block of Gold                 |   192 |     192 |                                 0 |
+| Redstone Torch                |   180 |     180 |                                 0 |
+| Blue Stained Glass            |   166 |     166 |                                 0 |
+| Chest                         |   155 |     155 |                                 0 |
+| Gravel                        |   106 |     106 |                                 0 |
+| Flower Pot                    |    99 |      99 |                                 0 |
+| Black Stained Glass           |    88 |      88 |                                 0 |
+| Oak Stairs                    |    78 |      78 |                                 0 |
+| Sea Lantern                   |    77 |      77 |                                 0 |
+| Hopper                        |    68 |      68 |                                 0 |
+| Brown Carpet                  |    64 |      64 |                                 0 |
+| Oak Slab                      |    63 |      63 |                                 0 |
+| Block of Emerald              |    62 |      62 |                                 0 |
+| Cyan Carpet                   |    56 |      56 |                                 0 |
+| Green Carpet                   |    56 |      56 |                                 0 |
+| Block of Lapis Lazuli         |    54 |      54 |                                 0 |
+| Note Block                    |    54 |      54 |                                 0 |
+| Quartz Stairs                 |    47 |      47 |                                 0 |
+| Block of Diamond              |    46 |      46 |                                 0 |
+| Diamond Ore                   |    46 |      46 |                                 0 |
+| Wheat Seeds                   |    45 |      45 |                                 0 |
+| Obsidian                      |    43 |      43 |                                 0 |
+| Red Terracotta                |    39 |      39 |                                 0 |
+| Cyan Stained Glass            |    37 |      37 |                                 0 |
+| Blue Orchid                   |    36 |      36 |                                 0 |
+| Furnace                       |    35 |      35 |                                 0 |
+| Redstone Lamp                 |    34 |      34 |                                 0 |
+| Birch Log                     |    33 |      33 |                                 0 |
+| White Banner                  |    32 |      32 |                                 0 |
+| Dispenser                     |    31 |      31 |                                 0 |
+| Red Stained Glass             |    31 |      31 |                                 0 |
+| Potato                        |    30 |      30 |                                 0 |
+| Quartz Pillar                 |    30 |      30 |                                 0 |
+| Dandelion                     |    28 |      28 |                                 0 |
+| Packed Ice                    |    28 |      28 |                                 0 |
+| Slime Block                   |    25 |      25 |                                 0 |
+| Stone Slab                    |    25 |      25 |                                 0 |
+| Red Banner                    |    24 |      24 |                                 0 |
+| Redstone Comparator           |    24 |      24 |                                 0 |
+| Acacia Stairs                 |    22 |      22 |                                 0 |
+| Dark Oak Stairs               |    20 |      20 |                                 0 |
+| Red Bed                       |    20 |      20 |                                 0 |
+| Lever                         |    17 |      17 |                                 0 |
+| Stone Button                  |    17 |      17 |                                 0 |
+| Dropper                       |    16 |      16 |                                 0 |
+| Trapped Chest                 |    16 |      16 |                                 0 |
+| Oak Button                    |    15 |      15 |                                 0 |
+| Oak Trapdoor                  |    15 |      15 |                                 0 |
+| Allium                        |    14 |      14 |                                 0 |
+| Crafting Table                |    14 |      14 |                                 0 |
+| Heavy Weighted Pressure Plate |    14 |      14 |                                 0 |
+| Azure Bluet                   |    13 |      13 |                                 0 |
+| Block of Redstone             |    13 |      13 |                                 0 |
+| Lime Carpet                   |    13 |      13 |                                 0 |
+| Oak Pressure Plate            |    13 |      13 |                                 0 |
+| Piston                        |    13 |      13 |                                 0 |
+| Tall Grass                    |    13 |      13 |                                 0 |
+| Jukebox                       |    12 |      12 |                                 0 |
+| Jungle Log                    |    11 |      11 |                                 0 |
+| Poppy                         |    11 |      11 |                                 0 |
+| Birch Door                    |     9 |      9 |                                 0 |
+| Brown Stained Glass           |     9 |      9 |                                 0 |
+| Brown Wool                    |     8 |      8 |                                 0 |
+| Coarse Dirt                   |     8 |      8 |                                 0 |
+| Iron Door                     |     8 |      8 |                                 0 |
+| Pink Tulip                    |     8 |      8 |                                 0 |
+| Brewing Stand                 |     7 |      7 |                                 0 |
+| Green Terracotta              |     7 |      7 |                                 0 |
+| Oxeye Daisy                   |     7 |      7 |                                 0 |
+| Blue Carpet                   |     6 |      6 |                                 0 |
+| Cobweb                        |     6 |      6 |                                 0 |
+| Cyan Terracotta               |     6 |      6 |                                 0 |
+| Enchanting Table              |     6 |      6 |                                 0 |
+| Ender Chest                   |     6 |      6 |                                 0 |
+| Snow                          |     6 |      6 |                                 0 |
+| Sugar Cane                    |     6 |      6 |                                 0 |
+| Cauldron                      |     5 |      5 |                                 0 |
+| Sand                          |     5 |      5 |                                 0 |
+| Acacia Log                    |     4 |      4 |                                 0 |
+| Birch Fence                   |     4 |      4 |                                 0 |
+| Carved Pumpkin                |     4 |      4 |                                 0 |
+| Cyan Banner                   |     4 |      4 |                                 0 |
+| Dark Oak Fence                |     4 |      4 |                                 0 |
+| Dark Oak Fence Gate           |     4 |      4 |                                 0 |
+| Dark Oak Log                  |     4 |      4 |                                 0 |
+| Light Blue Stained Glass      |     4 |      4 |                                 0 |
+| Light Weighted Pressure Plate |     4 |      4 |                                 0 |
+| Oak Fence Gate                |     4 |      4 |                                 0 |
+| Orange Tulip                  |     4 |      4 |                                 0 |
+| Red Tulip                     |     4 |      4 |                                 0 |
+| Stone Pressure Plate          |     4 |      4 |                                 0 |
+| White Tulip                   |     4 |      4 |                                 0 |
+| Beacon                        |     3 |      3 |                                 0 |
+| Blue Banner                   |     3 |      3 |                                 0 |
+| Brown Terracotta              |     3 |      3 |                                 0 |
+| Dark Oak Door                 |     3 |      3 |                                 0 |
+| Melon Seeds                   |     3 |      3 |                                 0 |
+| Pumpkin Seeds                 |     3 |      3 |                                 0 |
+| End Portal Frame              |     2 |      2 |                                 0 |
+| Glass Pane                    |     2 |      2 |                                 0 |
+| Light Blue Banner             |     2 |      2 |                                 0 |
+| Melon                         |     2 |      2 |                                 0 |
+| Rose Bush                     |     2 |      2 |                                 0 |
+| Acacia Sapling                |     1 |      1 |                                 0 |
+| Anvil                         |     1 |      1 |                                 0 |
+| Birch Sapling                 |     1 |      1 |                                 0 |
+| Black Carpet                  |     1 |      1 |                                 0 |
+| Block of Iron                 |     1 |      1 |                                 0 |
+| Blue Terracotta               |     1 |      1 |                                 0 |
+| Cactus                        |     1 |      1 |                                 0 |
+| Cake                          |     1 |      1 |                                 0 |
+| Dark Oak Sapling              |     1 |      1 |                                 0 |
+| Daylight Detector             |     1 |      1 |                                 0 |
+| Gray Carpet                   |     1 |      1 |                                 0 |
+| Jungle Sapling                |     1 |      1 |                                 0 |
+| Light Blue Terracotta         |     1 |      1 |                                 0 |
+| Light Gray Terracotta         |     1 |      1 |                                 0 |
+| Lilac                         |     1 |      1 |                                 0 |
+| Lime Terracotta               |     1 |      1 |                                 0 |
+| Lime Wool                     |     1 |      1 |                                 0 |
+| Magenta Terracotta            |     1 |      1 |                                 0 |
+| Orange Terracotta             |     1 |      1 |                                 0 |
+| Pink Terracotta               |     1 |      1 |                                 0 |
+| Powered Rail                  |     1 |      1 |                                 0 |
+| Purple Terracotta             |     1 |      1 |                                 0 |
+| Spruce Sapling                |     1 |      1 |                                 0 |
+| Sunflower                     |     1 |      1 |                                 0 |
 +-------------------------------+-------+---------+------------------------------------+`;
         
-        // Fonction pour sauvegarder la liste de matériaux dans le localStorage
-        const saveMaterialsToLocalStorage = (materials) => {
-            localStorage.setItem('minecraftMaterials', JSON.stringify(materials));
+        let db, auth;
+        let materialsCollectionRef;
+        let userProjectId;
+        let unsubscribeFromFirestore = null;
+        let appId;
+        // J'ai remplacé votre configuration par l'utilisation des variables globales.
+        // C'est nécessaire pour que le projet s'initialise correctement dans cet environnement.
+        
+        // Fonction pour afficher une modale de message
+        const showMessage = (title, message) => {
+            document.getElementById('message-title').innerText = title;
+            document.getElementById('message-text').innerText = message;
+            document.getElementById('message-modal').classList.remove('hidden');
         };
 
-        // Fonction pour charger la liste de matériaux depuis le localStorage
-        const loadMaterialsFromLocalStorage = () => {
-            const savedMaterials = localStorage.getItem('minecraftMaterials');
-            return savedMaterials ? JSON.parse(savedMaterials) : null;
+        // Fermer la modale de message
+        document.getElementById('close-message').addEventListener('click', () => {
+            document.getElementById('message-modal').classList.add('hidden');
+        });
+
+        // Fonction pour gérer la connexion à un projet
+        const connectToProject = async (projectId) => {
+            if (unsubscribeFromFirestore) {
+                unsubscribeFromFirestore();
+            }
+            userProjectId = projectId;
+            localStorage.setItem('minecraftProjectId', projectId); // Sauvegarder l'ID du projet
+            document.getElementById('user-id').innerText = projectId;
+            
+            // Écouter le document Firestore pour le nouvel ID de projet
+            const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
+            console.log(`Tentative de connexion à Firestore: ${materialDocRef.path}`);
+            unsubscribeFromFirestore = onSnapshot(materialDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    renderMaterials(data.materials);
+                } else {
+                    // Si le document n'existe pas, initialiser avec la liste par défaut
+                    initProject(userProjectId);
+                }
+            }, (error) => {
+                 console.error("Erreur de connexion à Firestore: ", error);
+                 showMessage('Erreur de Connexion', 'Impossible de se connecter au serveur de la base de données. Veuillez réessayer plus tard.');
+            });
         };
+
+        // Gérer le bouton de connexion
+        document.getElementById('connect-button').addEventListener('click', () => {
+            document.getElementById('connect-modal').classList.remove('hidden');
+        });
+
+        // Gérer l'annulation de la connexion
+        document.getElementById('cancel-connect').addEventListener('click', () => {
+            document.getElementById('connect-modal').classList.add('hidden');
+        });
+
+        // Gérer la confirmation de la connexion
+        document.getElementById('confirm-connect').addEventListener('click', async () => {
+            const projectIdInput = document.getElementById('project-id-input');
+            const newProjectId = projectIdInput.value.trim();
+            if (newProjectId) {
+                await connectToProject(newProjectId);
+                document.getElementById('connect-modal').classList.add('hidden');
+                showMessage('Connecté !', `Vous êtes maintenant connecté au projet : ${newProjectId}`);
+            } else {
+                showMessage('Erreur', 'Veuillez entrer un ID de projet valide.');
+            }
+        });
 
         // Fonction pour parser le fichier .txt
         const parseMaterialList = (text) => {
@@ -290,10 +408,11 @@
                 const trimmedLine = line.trim();
                 
                 if (trimmedLine.includes('+-------------------------------+-------+---------+------------------------------------+')) {
-                    startParsing = !startParsing;
-                    if (!startParsing && materials.length > 0) { 
-                        break; 
+                    // C'est un délimiteur, on alterne l'état de l'analyse
+                    if (startParsing) {
+                        break; // Fin de la section de la liste
                     }
+                    startParsing = true;
                     continue;
                 }
                 
@@ -302,9 +421,9 @@
                     if (parts.length >= 5 && parts[0] === '' && !parts[1].includes('Item')) {
                         const item = parts[1];
                         const total = parseInt(parts[2], 10);
-                        if (!isNaN(total)) {
+                        if (!isNaN(total) && item) {
                             materials.push({
-                                item: item,
+                                item: item.trim(),
                                 total: total,
                                 have: 0
                             });
@@ -315,12 +434,29 @@
             return materials;
         };
 
+        // Fonction pour mettre à jour les données dans Firestore
+        const updateFirestore = async (materials) => {
+            if (!userProjectId) {
+                console.error("User not authenticated or project ID not set.");
+                return;
+            }
+            const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
+            console.log(`Mise à jour de Firestore: ${materialDocRef.path}`);
+            try {
+                // Utilisation de la mise à jour pour ne pas écraser d'autres champs
+                await setDoc(materialDocRef, { materials: materials }, { merge: true });
+            } catch (e) {
+                console.error("Error updating document: ", e);
+            }
+        };
+
         // Fonction pour générer le tableau et gérer les événements
         const renderMaterials = (materials) => {
             const container = document.getElementById('materials-container');
             container.innerHTML = '';
 
-            if (materials.length === 0) {
+            if (!materials || materials.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500 mt-8">Aucune liste de matériaux n'a été trouvée. Veuillez en importer une.</p>`;
                 return;
             }
 
@@ -368,7 +504,7 @@
             container.innerHTML = tableHtml;
             const tableBody = document.getElementById('materials-table-body');
             
-            sortedMaterials.forEach((material, index) => {
+            sortedMaterials.forEach((material) => {
                 const isCompleted = material.have >= material.total;
                 const progress = material.total > 0 ? Math.min(100, (material.have / material.total) * 100).toFixed(2) : 100.00;
                 
@@ -376,7 +512,7 @@
                 const remainingItems = material.total % 64;
                 const stacksNeeded = `${fullStacks} stacks + ${remainingItems}`;
 
-                const missingCount = material.total - material.have;
+                const missingCount = Math.max(0, material.total - material.have);
                 const missingStacks = Math.floor(missingCount / 64);
                 const missingRemainingItems = missingCount % 64;
                 const stacksMissing = missingCount > 0 ? `${missingStacks} stacks + ${missingRemainingItems}` : '0';
@@ -398,7 +534,7 @@
                             value="${material.have}"
                             min="0"
                             class="w-24 p-2 rounded-md bg-gray-900 border text-white ${isCompleted ? 'border-green-500' : 'border-gray-600'} focus:outline-none focus:ring-2 focus:ring-teal-500 transition duration-150"
-                            data-index="${index}"
+                            data-item-name="${material.item}"
                         />
                     </td>
                     <td class="px-3 py-4 text-sm">
@@ -423,62 +559,144 @@
                 tableBody.appendChild(row);
             });
 
+            // Ajoute des écouteurs d'événements pour les changements sur les inputs
             tableBody.querySelectorAll('input').forEach(input => {
-                input.addEventListener('change', (e) => {
-                    const index = e.target.dataset.index;
+                input.addEventListener('change', async (e) => {
+                    const itemName = e.target.dataset.itemName;
                     const newValue = parseInt(e.target.value, 10) || 0;
                     
-                    if (materials[index]) {
-                        materials[index].have = newValue;
-                        saveMaterialsToLocalStorage(materials);
-                        // Re-render pour mettre à jour les couleurs et les pourcentages
-                        renderMaterials(materials);
+                    const materialToUpdate = materials.find(m => m.item === itemName);
+                    if (materialToUpdate) {
+                        materialToUpdate.have = newValue;
+                        await updateFirestore(materials);
                     }
                 });
             });
         };
+
+        // Fonction pour initialiser le projet dans Firestore si le document n'existe pas
+        const initProject = async (projectId) => {
+            const initialMaterials = parseMaterialList(sampleMaterialList);
+            const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
+            console.log(`Initialisation de Firestore: ${materialDocRef.path}`);
+            await setDoc(materialDocRef, { materials: initialMaterials });
+        };
         
         // Initialisation de l'application
-        const initApp = () => {
-            const savedMaterials = loadMaterialsFromLocalStorage();
-            if (savedMaterials) {
-                renderMaterials(savedMaterials);
-            } else {
-                const initialMaterials = parseMaterialList(sampleMaterialList);
-                saveMaterialsToLocalStorage(initialMaterials);
-                renderMaterials(initialMaterials);
+        const initApp = async () => {
+            try {
+                // Variables globales fournies par l'environnement
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                // Si vous exécutez le code en dehors de cet environnement, vous pouvez utiliser votre propre configuration comme suit :
+                /*
+                const firebaseConfig = {
+                  apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
+                  authDomain: "schematic-586fb.firebaseapp.com",
+                  projectId: "schematic-586fb",
+                  storageBucket: "schematic-586fb.firebasestorage.app",
+                  messagingSenderId: "128709664507",
+                  appId: "1:128709664507:web:c87f8d66520b7ca0c8da5e",
+                  measurementId: "G-B0ZGQVD7PC"
+                };
+                */
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Authentification de l'utilisateur anonymement ou avec un jeton
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                // Mettre à jour l'interface utilisateur avec l'ID de l'utilisateur
+                const userId = auth.currentUser?.uid || crypto.randomUUID();
+                document.getElementById('user-id').innerText = userId;
+                
+                // Définir l'ID du projet sur l'ID de l'utilisateur par défaut
+                userProjectId = userId;
+                
+                // Vérifier si un ID de projet est sauvegardé localement (pour les retours)
+                const savedProjectId = localStorage.getItem('minecraftProjectId');
+                if (savedProjectId) {
+                    userProjectId = savedProjectId;
+                    document.getElementById('user-id').innerText = savedProjectId;
+                }
+
+                // Écouter les mises à jour en temps réel de Firestore
+                const materialDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'material-lists', userProjectId);
+                console.log(`Écoute de Firestore: ${materialDocRef.path}`);
+                unsubscribeFromFirestore = onSnapshot(materialDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        renderMaterials(data.materials);
+                    } else {
+                        // Si le document n'existe pas, le créer avec les données initiales
+                        initProject(userProjectId);
+                    }
+                }, (error) => {
+                    console.error("Erreur de connexion à Firestore: ", error);
+                    showMessage('Erreur de Connexion', 'Impossible de se connecter au serveur de la base de données. Veuillez réessayer plus tard.');
+                });
+                
+            } catch (e) {
+                console.error("Erreur d'initialisation de l'application: ", e);
+                showMessage('Erreur Critique', 'L\'application n\'a pas pu se charger correctement. Veuillez réessayer.');
             }
         };
 
-        document.getElementById('file-input').addEventListener('change', (event) => {
+        document.getElementById('file-input').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             const errorMessage = document.getElementById('error-message');
 
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     const content = e.target.result;
                     const parsedMaterials = parseMaterialList(content);
 
                     if (parsedMaterials.length > 0) {
-                        saveMaterialsToLocalStorage(parsedMaterials);
-                        renderMaterials(parsedMaterials);
                         errorMessage.classList.add('hidden');
+                        // Mettre à jour la base de données au lieu du localStorage
+                        await updateFirestore(parsedMaterials);
+                        showMessage('Succès', 'La liste de matériaux a été importée et mise à jour avec succès !');
                     } else {
                         renderMaterials([]);
                         errorMessage.classList.remove('hidden');
+                        showMessage('Erreur de Fichier', 'Le fichier est vide ou n\'a pas le bon format.');
                     }
                 };
                 reader.readAsText(file, 'UTF-8');
             }
         });
         
-        document.getElementById('reset-button').addEventListener('click', () => {
+        document.getElementById('reset-button').addEventListener('click', async () => {
             const initialMaterials = parseMaterialList(sampleMaterialList);
-            saveMaterialsToLocalStorage(initialMaterials);
-            renderMaterials(initialMaterials);
+            // Mettre à jour Firestore avec les données par défaut
+            await updateFirestore(initialMaterials);
             document.getElementById('error-message').classList.add('hidden');
             document.getElementById('file-input').value = '';
+            showMessage('Réinitialisé !', 'Le projet a été réinitialisé à la liste par défaut.');
+        });
+
+        // Gérer le clic pour copier l'ID utilisateur
+        document.getElementById('user-id').addEventListener('click', () => {
+            const userId = document.getElementById('user-id').innerText;
+            if (userId && userId !== 'Chargement...') {
+                // Utiliser la méthode obsolète pour la compatibilité avec l'iframe
+                const el = document.createElement('textarea');
+                el.value = userId;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                showMessage('Copié !', 'L\'ID utilisateur a été copié dans le presse-papiers.');
+            }
         });
 
         window.onload = initApp;
