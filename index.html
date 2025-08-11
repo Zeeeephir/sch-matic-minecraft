@@ -420,29 +420,17 @@
             let startParsing = false;
 
             for (const line of lines) {
-                const trimmedLine = line.trim();
-                
-                if (trimmedLine.includes('+-------------------------------+-------+---------+------------------------------------+')) {
-                    // C'est un délimiteur, on alterne l'état de l'analyse
-                    if (startParsing) {
-                        break; // Fin de la section de la liste
-                    }
-                    startParsing = true;
-                    continue;
-                }
-                
-                if (startParsing) {
-                    const parts = trimmedLine.split('|').map(p => p.trim());
-                    if (parts.length >= 5 && parts[0] === '' && !parts[1].includes('Item')) {
-                        const item = parts[1];
-                        const total = parseInt(parts[2], 10);
-                        if (!isNaN(total) && item) {
-                            materials.push({
-                                item: item.trim(),
-                                total: total,
-                                have: 0
-                            });
-                        }
+                // Utiliser une expression régulière pour diviser la ligne en colonnes tout en gérant les espaces
+                const parts = line.split(/\|/g).map(p => p.trim());
+                if (parts.length >= 5 && parts[1] && !parts[1].includes('Item') && parts[2]) {
+                    const item = parts[1];
+                    const total = parseInt(parts[2], 10);
+                    if (!isNaN(total) && item) {
+                        materials.push({
+                            item: item.trim(),
+                            total: total,
+                            have: 0
+                        });
                     }
                 }
             }
