@@ -350,6 +350,9 @@
                                     Stacks requis
                                 </th>
                                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Stacks manquants
+                                </th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                     Double coffres
                                 </th>
                                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -372,6 +375,11 @@
                 const fullStacks = Math.floor(material.total / 64);
                 const remainingItems = material.total % 64;
                 const stacksNeeded = `${fullStacks} stacks + ${remainingItems}`;
+
+                const missingCount = material.total - material.have;
+                const missingStacks = Math.floor(missingCount / 64);
+                const missingRemainingItems = missingCount % 64;
+                const stacksMissing = missingCount > 0 ? `${missingStacks} stacks + ${missingRemainingItems}` : '0';
 
                 const doubleChestsNeeded = (material.total / (64 * 54)).toFixed(1);
 
@@ -401,6 +409,9 @@
                     </td>
                     <td class="px-3 py-4 text-sm text-gray-400">
                         ${stacksNeeded}
+                    </td>
+                    <td class="px-3 py-4 text-sm text-yellow-400">
+                        ${stacksMissing}
                     </td>
                     <td class="px-3 py-4 text-sm text-gray-400">
                         ${doubleChestsNeeded}
