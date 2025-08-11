@@ -237,7 +237,7 @@
 | Packed Ice                    |    28 |      28 |                                 0 |
 | Slime Block                   |    25 |      25 |                                 0 |
 | Stone Slab                    |    25 |      25 |                                 0 |
-| Red Banner                    |    24 |      24 |                                 0 |
+| Red Banner                        |    24 |      24 |                                 0 |
 | Redstone Comparator           |    24 |      24 |                                 0 |
 | Acacia Stairs                 |    22 |      22 |                                 0 |
 | Dark Oak Stairs               |    20 |      20 |                                 0 |
@@ -333,8 +333,23 @@
         let userProjectId;
         let unsubscribeFromFirestore = null;
         
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // REMPLACER cette ligne par votre configuration Firebase
+        // Vous pouvez trouver cet objet dans les paramètres de votre projet Firebase
+        const FIREBASE_CONFIG = {
+             apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
+             authDomain: "schematic-586fb.firebaseapp.com",
+             projectId: "schematic-586fb",
+             storageBucket: "schematic-586fb.firebasestorage.app",
+             messagingSenderId: "128709664507",
+             appId: "1:128709664507:web:c87f8d66520b7ca0c8da5e",
+             measurementId: "G-B0ZGQVD7PC"
+        };
+        
+        // Ces variables sont fournies par l'environnement Canvas.
+        // Ne modifiez pas ces lignes si vous utilisez l'application dans l'environnement Canvas.
+        // Si vous exécutez le code sur GitHub, assurez-vous que FIREBASE_CONFIG est rempli.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : FIREBASE_CONFIG.appId;
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : FIREBASE_CONFIG;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         // Fonction pour afficher une modale de message
@@ -585,6 +600,11 @@
         // Initialisation de l'application
         const initApp = async () => {
             try {
+                // Vérifier si la configuration Firebase a été fournie
+                if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Firebase configuration is missing. Please provide your own FIREBASE_CONFIG.");
+                }
+                
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -601,7 +621,7 @@
                 document.getElementById('user-id').innerText = userId;
                 
                 // Définir l'ID du projet sur l'ID de l'utilisateur par défaut
-                userProjectId = userId; // Correction : Met à jour la variable globale.
+                userProjectId = userId;
                 
                 // Vérifier si un ID de projet est sauvegardé localement (pour les retours)
                 const savedProjectId = localStorage.getItem('minecraftProjectId');
@@ -628,7 +648,12 @@
                 
             } catch (e) {
                 console.error("Erreur d'initialisation de l'application: ", e);
-                showMessage('Erreur Critique', 'L\'application n\'a pas pu se charger correctement. Veuillez réessayer.');
+                // Si l'erreur est due à une configuration manquante, afficher un message plus précis
+                if (e.message.includes("Firebase configuration is missing")) {
+                     showMessage('Erreur Critique', "Configuration Firebase manquante. Veuillez insérer votre configuration personnelle dans le code.");
+                } else {
+                    showMessage('Erreur Critique', 'L\'application n\'a pas pu se charger correctement. Veuillez réessayer.');
+                }
             }
         };
 
