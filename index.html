@@ -330,12 +330,12 @@
 +-------------------------------+-------+---------+------------------------------------+`;
         
         let db, auth;
-        let materialsCollectionRef;
         let userProjectId;
         let unsubscribeFromFirestore = null;
-        let appId;
-        // J'ai remplacé votre configuration par l'utilisation des variables globales.
-        // C'est nécessaire pour que le projet s'initialise correctement dans cet environnement.
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         // Fonction pour afficher une modale de message
         const showMessage = (title, message) => {
@@ -585,24 +585,6 @@
         // Initialisation de l'application
         const initApp = async () => {
             try {
-                // Variables globales fournies par l'environnement
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                // Si vous exécutez le code en dehors de cet environnement, vous pouvez utiliser votre propre configuration comme suit :
-                /*
-                const firebaseConfig = {
-                  apiKey: "AIzaSyCjeevyvUwyp1kBFPi7pAs9yTTXzr4KEPM",
-                  authDomain: "schematic-586fb.firebaseapp.com",
-                  projectId: "schematic-586fb",
-                  storageBucket: "schematic-586fb.firebasestorage.app",
-                  messagingSenderId: "128709664507",
-                  appId: "1:128709664507:web:c87f8d66520b7ca0c8da5e",
-                  measurementId: "G-B0ZGQVD7PC"
-                };
-                */
-
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -619,7 +601,7 @@
                 document.getElementById('user-id').innerText = userId;
                 
                 // Définir l'ID du projet sur l'ID de l'utilisateur par défaut
-                userProjectId = userId;
+                userProjectId = userId; // Correction : Met à jour la variable globale.
                 
                 // Vérifier si un ID de projet est sauvegardé localement (pour les retours)
                 const savedProjectId = localStorage.getItem('minecraftProjectId');
